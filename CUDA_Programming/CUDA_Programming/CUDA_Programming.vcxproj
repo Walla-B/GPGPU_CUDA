@@ -77,7 +77,13 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="CudaTest.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="CudaTest.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CudaTest.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
