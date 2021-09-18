@@ -53,14 +53,14 @@ int main (void) {
         y[i] = 2.0f;
     }
 
-    // Host에서 할당된 데이터를 cudaMemcpy(), cudaMemcpyHostToDevice 인자를 이용해 Device 로 넘긴다.
+    // Host에서 할당된 데이터를 Host에서 Device 로 넘긴다.
     cudaMemcpy (d_x, x, N*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy (d_y, y, N*sizeof(float), cudaMemcpyHostToDevice);
 
     // 한개 또는 그 이상의 Kernel 실행
     saxpy<<<(N*255)/256>>>(N, 2.0f, d_x, d_y);
 
-    // 결과를 cudaMemcpy(), cudaMemcpyDeviceToHost 인자를 이용해 Device에서 Host로 넘긴다.
+    // 결과를 Device에서 Host로 넘긴다.
     cudaMemcpy(y, d_y, N*sizeof(float), cudaMemcpyDeviceToHost);
 
     // (optional) Error calculation
@@ -80,3 +80,19 @@ int main (void) {
     free(y);
 }
 ```
+03.상세
+---
+```cpp
+cudaMalloc(void** devPtr, size_t size)
+```
++ cudaMalloc() : GPU 메모리에 메모리를 할당한다
+
+    사용법은 일반적인 malloc() 함수와 동일하다.
+
+
+```cpp
+cudaFree(void** devPtr)
+```
++ cudaFree() : GPU에 할당된 메모리를 해제한다
+
+    마찬가지로 free()함수와 사용법은 동일.
