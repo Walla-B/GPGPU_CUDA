@@ -11,15 +11,17 @@ Device : GPU / GPU 메모리
 
 Host에서의 명령을 통해 , Host는 물론 Device에서의 명령과 메모리에 접근할 수 있다. Device에서 실행되는 명령은 kernel이라 불리며, 병렬로 처리된다.
 
-일반적인 CUDA C 프로그램의 실행순서:
+<br/>
 
-1. Host와 Device의 메모리를 선언 및 초기화한다.
-2. Host 데이터 할당
-3. Host의 할당된 데이터를 Device로 넘긴다
-4. 한개 또는 그 이상의 kernel을 실행한다
-5. 결과를 Device로부터 Host로 넘긴다
++ 일반적인 CUDA C 프로그램의 실행순서:
 
+    1. Host와 Device의 메모리를 선언 및 초기화한다.
+    2. Host 데이터 할당
+    3. Host의 할당된 데이터를 Device로 넘긴다
+    4. 한개 또는 그 이상의 kernel을 실행한다
+    5. 결과를 Device로부터 Host로 넘긴다
 
+<br/>
 02.예시
 ---
 SAXPY (Single-Precision A*X Plus Y)
@@ -58,7 +60,7 @@ int main (void) {
     cudaMemcpy (d_y, y, N*sizeof(float), cudaMemcpyHostToDevice);
 
     // 한개 또는 그 이상의 Kernel 실행
-    saxpy<<<(N*255)/256>>>(N, 2.0f, d_x, d_y);
+    saxpy<<<(N*255)/256, 256>>>(N, 2.0f, d_x, d_y);
 
     // 결과를 Device에서 Host로 넘긴다.
     cudaMemcpy(y, d_y, N*sizeof(float), cudaMemcpyDeviceToHost);
@@ -80,6 +82,7 @@ int main (void) {
     free(y);
 }
 ```
+<br/>
 03.상세
 ---
 ```cpp
@@ -97,6 +100,8 @@ cudaFree(void** devPtr);
 
     마찬가지로 free()함수와 사용법은 동일.
 
+<br/>
+
 > Q. 왜 더블포인터 (void**)를 사용하는가?
 >
 > A. 일반적인 malloc() 함수와의 차이점으로, malloc()은 할당된 메모리 공간의 주소를 반환하는 반면에,
@@ -109,6 +114,7 @@ cudaFree(void** devPtr);
 > 
 > [참고](https://stackoverflow.com/questions/7989039/use-of-cudamalloc-why-the-double-pointer)
 
+<br/>
 
 ```cpp
 cudaMemcpy(void* dst, const void* src, size_t count, cudaMemcpyKind kind);
@@ -126,13 +132,123 @@ __global__ void Func(float* param);
 // Kernel execution
 Func<<< Dg, Db, Ns >>>(param);
 ```
-+   Dg : (dim3) 실행되는 블록의 개수
 
-    Db : (dim3) 블럭당 실행되는 스레드의 개수
+> + CUDA Keywords:
+> 
+>   ```cpp
+>   // GPU에서 동작하는 함수, CPU에서 호출 가능
+>   __global__ void Func(float* param);
+> 
+>   // 오직 CPU에서만 동작 가능한 함수
+>   __host__ void Func(float* param);
+> 
+>   // GPU 내부에서 동작하며, GPU에서만 호출 가능한 함수
+>   __device__ void Func(float* param);
+> 
+>   // CPU, GPU 각각 모두 호출 가능한 함수
+>   __host device__ void Func(float* param);
+>   ```
+>  
+  
++   Dg : (dim3) 실행되는 블록의 개수 (= Grid의 크기)
+
+    Db : (dim3) 블럭당 실행되는 스레드의 개수 (= 블럭의 크기)
 
     Ns : (size_t) optional, 기본값은 0이며 블럭당 할당되는 동적 메모리의 양이다
 
     [참고](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#execution-configuration)
+
+> + dim3 : 차원을 결정하는 벡터타입 변수. 초기화하지 않은 부분은 1로 초기화된다.
+>
+>   ```cpp
+>   // 3차원
+>   dim3 dimention(uint x, uint y, uint z);
+>
+>   // 2차원
+>   dim3 diention(uint x, uint y);
+> 
+>   // 1차원
+>   dim3 diention(uint x);
+>   ```
+
+
+<br/>
+
+> + Block And Threads :
+> 
+>   ![img](https://docs.nvidia.com/cuda/cuda-c-programming-guide/graphics/grid-of-thread-blocks.png)
+>
+>   한개의 Grid는 여러개의 Block으로, 또 각각의 Block 들은 여러개의 Threads를 가지고 있어 병렬처리를 가능하게 한다.
+>
+>   위의 이미지에서는 Block과 Thread 모두 이차원으로 정의되었으며, 접근시에도 이차원 인덱스를 이용할 것이다.
+>
+>   ```cpp
+>   // 위의 삽도에서 정의된 대로 Block 및 Thread의 dim3 구현방법
+>   dim3 threadsPerBlock(3,4);
+>   dim3 numBlocks(2,3);
+>   ```
+>   그러나 위와 같은 형태는 주어진 데이터 크기에 따라 유동적으로 바뀔 수 없으므로, 앞서 초기화한
+> 
+>   메모리의 크기를 이용해 다음과 같이 구현한다.
+> 
+>   <br/>
+> + 일반적인 형태의 dim3 구현 방법
+>   ```cpp
+>   // 최적 Block별 Thread 개수
+>   dim3 threadsPerBlock(16, 16);
+> 
+>   // 연산이 필요한 데이터가 float data[N][M]과 같이 주어졌을 경우,
+>   // 데이터를 Block의 크기 (=threadsPerBlock) 의 단위로 쪼갤수도 있다.
+>   dim3 numBlocks( (N / threadsPerBlock.x) , (M / threadsPerBlock.y) );
+>
+>   // Kernel 실행
+>   Func<<<numBlocks, threadsPerBlock>>>(param);
+>   ```
+
+<br/>
+
+```cpp
+__global__
+void saxpy() (int n, float a, float* x, float* y) {
+    int i = blockidx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        y[i] = a*x[i] + y[i];
+    }
+}
+``` 
++ Kernel 내에서의 인덱싱 키워드
+  
+    |키워드|타입|설명|비고|
+    |:---:|:---:|:--:|:--:|
+    |gridDim|dim3|Grid가 포함한 Block들의 치수| = Dg
+    |blockIdx|uint3|Grid 안에서의 Block별 고유 Index|
+    |blockDim|dim3|Block이 포함한 Thread들의 치수| = Db
+    |threadIdx|uint3|Block 안에서의 Thread별 고유 Index|
+
+>gridDim의 각 원소 x, y, z 를 모두 곱하면 총 block 들의 개수가,
+>
+>blockDim의 각 원소 x, y, z 를 모두 곱하면 한 블록마다 가지고있는 Thread들의 개수가 구해진다.
+
+위의 키워드들 중, 병렬처리를 위한 메모리 접근에 필요한 index를 계산하기 위해 일반적으로
+
+blockIdx, blockDim, threadIdx가 필요하며, 이를 이용해 index를 구한다.
+
+
+> indexing 방법:
+> + Block, Thread가 최대 N차원일때, Cartesian Method 와 비슷하게 N개의 index 나타내는 방법
+>   ```cpp
+>   int index1 = blockDim.x * blockIdx.x + threadIdx.x;
+>   int index2 = blockDim.y * blockIdx.y + threadIdx.y; //최대 2차원인 경우 추가
+>   int index3 = blockDim.z * blockIdx.z + threadIdx.z; //최대 3차원인 경우 추가
+>   ```
+> + Block이 1차원, Thread가 2차원일때 한개의 index로 나타내는 방법
+>   ```cpp
+>   int index = blockIdx.x * (blockDim.x * blockDim.y)
+>                   + threadIdx.y * blockDim.x + threadIdx.x;
+>   ```
+> + 이외 N차원 Block, M차원 Thread를 하나의 index로 나타내는 방법은 다음을 참고:
+> 
+>   [차원별 Index 맵핑 방법](https://cs.calvin.edu/courses/cs/374/CUDA/CUDA-Thread-Indexing-Cheatsheet.pdf)
 
 
 04.마침
