@@ -11,7 +11,6 @@ Device : GPU / GPU 메모리
 
 Host에서의 명령을 통해 , Host는 물론 Device에서의 명령과 메모리에 접근할 수 있다. Device에서 실행되는 명령은 kernel이라 불리며, 병렬로 처리된다.
 
-<br/>
 
 + 일반적인 CUDA C 프로그램의 실행순서:
 
@@ -21,7 +20,6 @@ Host에서의 명령을 통해 , Host는 물론 Device에서의 명령과 메모
     4. 한개 또는 그 이상의 kernel을 실행한다
     5. 결과를 Device로부터 Host로 넘긴다
 
-<br/>
 02.예시
 ---
 SAXPY (Single-Precision A*X Plus Y)
@@ -82,7 +80,6 @@ int main (void) {
     free(y);
 }
 ```
-<br/>
 03.상세
 ---
 ```cpp
@@ -100,7 +97,6 @@ cudaFree(void** devPtr);
 
     마찬가지로 free()함수와 사용법은 동일.
 
-<br/>
 
 > Q. 왜 더블포인터 (void**)를 사용하는가?
 >
@@ -114,7 +110,6 @@ cudaFree(void** devPtr);
 > 
 > [참고](https://stackoverflow.com/questions/7989039/use-of-cudamalloc-why-the-double-pointer)
 
-<br/>
 
 ```cpp
 cudaMemcpy(void* dst, const void* src, size_t count, cudaMemcpyKind kind);
@@ -172,7 +167,6 @@ Func<<< Dg, Db, Ns >>>(param);
 >   ```
 
 
-<br/>
 
 > + Block And Threads :
 > 
@@ -191,7 +185,6 @@ Func<<< Dg, Db, Ns >>>(param);
 > 
 >   메모리의 크기를 이용해 다음과 같이 구현한다.
 > 
->   <br/>
 > + 일반적인 형태의 dim3 구현 방법
 >   ```cpp
 >   // 최적 Block별 Thread 개수
@@ -205,7 +198,6 @@ Func<<< Dg, Db, Ns >>>(param);
 >   Func<<<numBlocks, threadsPerBlock>>>(param);
 >   ```
 
-<br/>
 
 ```cpp
 __global__
@@ -249,6 +241,42 @@ blockIdx, blockDim, threadIdx가 필요하며, 이를 이용해 index를 구한�
 > + 이외 N차원 Block, M차원 Thread를 하나의 index로 나타내는 방법은 다음을 참고:
 > 
 >   [차원별 Index 맵핑 방법](https://cs.calvin.edu/courses/cs/374/CUDA/CUDA-Thread-Indexing-Cheatsheet.pdf)
+
+
++ Kernel 작성 시 주의해야 할 부분들 
+ 
+    [참고 - Control Flow best practicies](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#control-flow)
+
+    GPU는 기본적으로 SIMT (Single Instruction Multiple Threads) 을 따른다.
+
+    이것이 의미하는 것은, 한개의 스레드가 어떠한 분기문을 타고 다른 Control Path로 들어가게 된다면
+
+    Block으로 묶여있는 다른 Thread들도 좋든 싫든 같은 분기문을 타고 들어가야 한다는 것이다.
+
+    그렇게 조건에 맞지 않는 분기문을 타고 들어간 다른 Thread들은 결과값을 무시하고 다시 연산하는 방법으로
+
+    값을 구하기 때문에 분기문이 들어간 Kernel들은 그렇지 않은 경우에 비해 throughput이 낮아질 수 있다.
+
+
+    ```cpp
+    __global__
+    void FOO(int n,  float* a, float* b) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // if, switch, do, for, while 등등 분기문들
+        if ( i == 0 ) {
+            // Do something
+        }
+
+        b[i] = n*a[i];
+    }
+    ```
+
+> Q. 그렇다면 해결법은?
+>
+> A. 분기가 많이 들어가는 경우에 한해서 분기문을 host에서 먼저 처리한뒤 Kernel로 보내는 방법이 있으며,
+>   [추가]
+>
 
 
 04.마침
