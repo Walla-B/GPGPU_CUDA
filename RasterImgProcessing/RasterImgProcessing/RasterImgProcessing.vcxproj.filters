@@ -23,6 +23,9 @@
     <CudaCompile Include="CudaTest.cu">
       <Filter>소스 파일</Filter>
     </CudaCompile>
+    <CudaCompile Include="Conway_GameOfLife.cu">
+      <Filter>소스 파일</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CudaTest.cuh">

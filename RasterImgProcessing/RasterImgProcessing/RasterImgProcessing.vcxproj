@@ -22,6 +22,7 @@
     <ClCompile Include="CudaTest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="Conway_GameOfLife.cu" />
     <CudaCompile Include="CudaTest.cu" />
   </ItemGroup>
   <ItemGroup>

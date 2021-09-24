@@ -242,7 +242,6 @@ blockIdx, blockDim, threadIdx가 필요하며, 이를 이용해 index를 구한�
 > 
 >   [차원별 Index 맵핑 방법](https://cs.calvin.edu/courses/cs/374/CUDA/CUDA-Thread-Indexing-Cheatsheet.pdf)
 
-
 + Kernel 작성 시 주의해야 할 부분들 
  
     [참고 - Control Flow best practicies](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#control-flow)
@@ -259,24 +258,69 @@ blockIdx, blockDim, threadIdx가 필요하며, 이를 이용해 index를 구한�
 
 
     ```cpp
+    // Bad implemetations
+
     __global__
     void FOO(int n,  float* a, float* b) {
         int i = blockIdx.x * blockDim.x + threadIdx.x;
 
         // if, switch, do, for, while 등등 분기문들
-        if ( i == 0 ) {
+
+        if ( /* Check_Conditions */ ) {
+            // Do something
+        }
+        else if ( /* Check_ Conditions */ ) {
+            // Do something
+        }
+        else {
             // Do something
         }
 
         b[i] = n*a[i];
     }
+
+    __host__
     ```
 
 > Q. 그렇다면 해결법은?
 >
-> A. 분기가 많이 들어가는 경우에 한해서 분기문을 host에서 먼저 처리한뒤 Kernel로 보내는 방법이 있으며,
->   [추가]
+> A.
+>> 1. 분기가 많이 들어가는 경우에 한해서 분기문을 host에서 먼저 처리한뒤 Kernel로 보내는 방법이 있다.
+>>
+>>    Compile time 에 조건을 계산해서 처리하므로 Kernel 안 분기문의 조건을 일일히 계산하는 것보다
+>>
+>>    빨라질 수 있다.
+>>
+>>      ```cpp
+>>      // Example of Answer 1
+>>      __global__
+>>      void foo(int* a, bool cond) {
+>>          if (cond) do_something()
+>>          else do_something_else()
+>>      }
+>>      __host__
+>>      bool cond = check_stuff();
+>>      foo(data, cond);
+>>      ```
 >
+>> 2. Control flow가 분기하는 대신, Data가 분기하도록 연산을 처리한다.
+>>
+>>      ```cpp
+>>      void 
+>>      // Example of Answer 2
+>>      void foo(int* a, int* b) {
+>>          // 여가서 check() 는 boolean value를 리턴한다.
+>>          if (check(a[index]) {b[index]++;}
+>>      }
+>>      ```
+>>      2.1. 엘비스 연산자 분기문을 이용한다.
+>>
+>>      ```cpp
+>>      void foo(int* a, int b) {
+>>          b[index] = check(a[index]) ? 1 : 0;
+>>      }
+>>      ```
+>   [추가]
 
 
 04.마침
