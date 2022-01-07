@@ -12,6 +12,7 @@ extern "C" {
 		virtual ~CudaTest(void);
 		int sum_cuda(int a, int b, int* c);
 		int multiply_cuda(int a, int b, int* c);
+		int thread_debug();
 
 	};
 	

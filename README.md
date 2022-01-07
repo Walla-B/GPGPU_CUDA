@@ -176,6 +176,8 @@ Func<<< Dg, Db, Ns >>>(param);
 >
 >   위의 이미지에서는 Block과 Thread 모두 이차원으로 정의되었으며, 접근시에도 이차원 인덱스를 이용할 것이다.
 >
+>   중요한 점은, thread는 각 연산의 단위, block은 스케줄링의 단위라는 것이다.
+>
 >   ```cpp
 >   // 위의 삽도에서 정의된 대로 Block 및 Thread의 dim3 구현방법
 >   dim3 threadsPerBlock(3,4);
@@ -197,7 +199,18 @@ Func<<< Dg, Db, Ns >>>(param);
 >   // Kernel 실행
 >   Func<<<numBlocks, threadsPerBlock>>>(param);
 >   ```
-
+>   추가: 위의 방법은 N, M이 각각 threadsPerBlock.x, threadsPerBlock.y의 배수일 때만 사용할 수 있는 계산방법이다.
+> 
+>   데이터의 손실을 막기 위해서 kernel 안의 조건문으로서 index의 제한을 걸어주어야 한다.
+>   혹은,
+> 
+>   numBlock를 총 연산횟수 / threadsPerBlock + 1 의 방법으로 구할수도 있는데,
+> 
+>   일정 수준 이상으로 넘어가면 예외가 발생한다.
+>   
+>   CUDA 6.5 이상 버전에서는 휴리스틱을 이용해 최적 block size, grid size를 구해주는
+> 
+>   cudaOccupancyMaxPotentialBlockSize() 메소드가 구현되어있다.
 
 ```cpp
 __global__
@@ -242,6 +255,42 @@ blockIdx, blockDim, threadIdx가 필요하며, 이를 이용해 index를 구한�
 > 
 >   [차원별 Index 맵핑 방법](https://cs.calvin.edu/courses/cs/374/CUDA/CUDA-Thread-Indexing-Cheatsheet.pdf)
 
++ 최적의 threadsPerBock, blocksPerGrid 구하기
+
+1. threadsPerBlock: 일반적으로, block의 사이즈는 Hardware-dependent 하다.
+   자세한 내용은 해당 질문 참고 
+   
+   [How do I choose grid and block dimensions for CUDA kernels?](https://stackoverflow.com/questions/9985912/how-do-i-choose-grid-and-block-dimensions-for-cuda-kernels)
+
+   요약하자면, Block의 최대 크기는 CC 버전에 따라서 limit이 있으며, 해당 limit을 초과하지
+
+   않는 선에서 32의 배수의 개수로 잡으면 된다.
+
+   예를들어 block=(16,16,1) 이라면, 블럭당 스레드의 개수는 16 * 16 * 1 = 32 * 8 이므로 해당
+   조건을 만족한다.
+
+
+2. blocksPerGrid:
+   grid의 치수는, 데이터의 크기, 그리고 block의 치수에 의해서 결정된다. 
+   예를들어 데이터의 크기가 943 * 1682 인 배열을 연산해야 한다고 할때, blockdim의
+
+   각 row, col 원소값보다 큰 값으로 설정해야 한다.
+
+   만약 input 데이터가 943 * 1682의 배열이라면, blockdim이 16 * 16이므로, 해당 블럭
+   59 * 106개로 커버 가능한 치수가 grid의 dimention이 된다.
+
+>Each block cannot have more than 512/1024 threads in total (Compute Capability 1.x or 2.x and later respectively)
+>
+>The maximum dimensions of each block are limited to [512,512,64]/[1024,1024,64] (Compute 1.x/2.x or later)
+>
+>Each block cannot consume more than 8k/16k/32k/64k/32k/64k/32k/64k/32k/64k registers total (Compute 1.0,1.1/1.2,1.3/2.x-/3.0/3.2/3.5-5.2/5.3/6-6.1/6.2/7.0)
+>
+>Each block cannot consume more than 16kb/48kb/96kb of shared memory (Compute 1.x/2.x-6.2/7.0)
+
+즉, 그래픽카드의 Compute Capability 버전에 따라서 블럭당 실행 가능한 스레드 수나, 스레드당
+가용 가능한 메모리, 블럭의 최대 차원 등이 제한된다.
+
+본 컴퓨터의 그래픽카드(GTX 1650)의 Compute Capability는 7.5이다.
 + Kernel 작성 시 주의해야 할 부분들 
  
     [참고 - Control Flow best practicies](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#control-flow)
